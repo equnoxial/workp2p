@@ -6,10 +6,10 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
 import database as db
-from config import ADMIN_IDS
+from config import ADMIN_IDS, CALENDAR_IMAGE
 from states import AdminStates
 from keyboards import admin_main_menu, build_calendar
-from utils import split_text
+from utils import split_text, answer_with_photo
 
 router = Router()
 
@@ -114,7 +114,8 @@ async def admin_stats_process(message: Message, state: FSMContext):
     await state.clear()
     now = datetime.now()
     markup = await build_calendar(number, now.year, now.month, mode='a')
-    await message.answer(
+    await answer_with_photo(
+        message, CALENDAR_IMAGE,
         f"📅 Статистика воркера №{number}\nВыберите день:",
-        reply_markup=markup
+        markup
     )
