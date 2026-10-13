@@ -9,7 +9,8 @@ from states import DepositStates, CircleStates
 from keyboards import (
     build_calendar, build_day_actions, build_archive_list, render_day_summary
 )
-from utils import shift_month, parse_amount
+from utils import shift_month, parse_amount, replace_with_photo, show_day_with_photo, answer_with_photo
+from config import CALENDAR_IMAGE, STATISTICS_IMAGE
 
 router = Router()
 
@@ -27,9 +28,10 @@ async def open_calendar(callback: CallbackQuery):
 
     now = datetime.now()
     markup = await build_calendar(worker['number'], now.year, now.month, mode='w')
-    await callback.message.edit_text(
+    await replace_with_photo(
+        callback, CALENDAR_IMAGE,
         f"📅 Календарь — №{worker['number']}\nВыберите день:",
-        reply_markup=markup
+        markup
     )
     await callback.answer()
 
@@ -61,9 +63,10 @@ async def open_archive_month(callback: CallbackQuery):
             return
 
     markup = await build_calendar(number, year, month, mode=mode)
-    await callback.message.edit_text(
+    await replace_with_photo(
+        callback, CALENDAR_IMAGE,
         f"📅 Календарь — №{number}\nВыберите день:",
-        reply_markup=markup
+        markup
     )
     await callback.answer()
 
@@ -87,9 +90,10 @@ async def nav_calendar(callback: CallbackQuery):
     new_year, new_month = shift_month(year, month, delta)
 
     markup = await build_calendar(number, new_year, new_month, mode=mode)
-    await callback.message.edit_text(
+    await replace_with_photo(
+        callback, CALENDAR_IMAGE,
         f"📅 Календарь — №{number}\nВыберите день:",
-        reply_markup=markup
+        markup
     )
     await callback.answer()
 
@@ -110,10 +114,17 @@ async def select_day(callback: CallbackQuery):
             return
 
     date_str = f"{year:04d}-{month:02d}-{day:02d}"
-    text = await render_day_summary(number, date_str)
+    date_formatted = f"{day:02d}.{month:02d}.{year:04d}"
+
+    full_text = await render_day_summary(number, date_str)
     markup = build_day_actions(number, year, month, day, mode)
 
-    await callback.message.edit_text(text, reply_markup=markup)
+    await show_day_with_photo(
+        callback, STATISTICS_IMAGE,
+        f"📊 Статистика за {date_formatted} — №{number}",
+        full_text,
+        markup
+    )
     await callback.answer()
 
 
@@ -123,9 +134,10 @@ async def back_to_calendar(callback: CallbackQuery):
     number, year, month = int(number), int(year), int(month)
 
     markup = await build_calendar(number, year, month, mode=mode)
-    await callback.message.edit_text(
+    await replace_with_photo(
+        callback, CALENDAR_IMAGE,
         f"📅 Календарь — №{number}\nВыберите день:",
-        reply_markup=markup
+        markup
     )
     await callback.answer()
 
@@ -166,15 +178,20 @@ async def process_deposit(message: Message, state: FSMContext):
     data = await state.get_data()
     number, year, month, day = data['number'], data['year'], data['month'], data['day']
     date_str = f"{year:04d}-{month:02d}-{day:02d}"
+    date_formatted = f"{day:02d}.{month:02d}.{year:04d}"
 
     await db.set_deposit(number, date_str, amount)
     await state.clear()
 
-    summary = await render_day_summary(number, date_str)
+    full_text = await render_day_summary(number, date_str)
     markup = build_day_actions(number, year, month, day, 'w')
 
     await message.answer("✅ Депозит обновлен!")
-    await message.answer(summary, reply_markup=markup)
+    await answer_with_photo(
+        message, STATISTICS_IMAGE,
+        f"📊 Статистика за {date_formatted} — №{number}"
+    )
+    await message.answer(full_text, reply_markup=markup)
 
 
 # ---------------------------------------------------------------------------
@@ -258,6 +275,7 @@ async def process_profit(message: Message, state: FSMContext):
     data = await state.get_data()
     number, year, month, day = data['number'], data['year'], data['month'], data['day']
     date_str = f"{year:04d}-{month:02d}-{day:02d}"
+    date_formatted = f"{day:02d}.{month:02d}.{year:04d}"
 
     await db.add_circle(
         number, date_str, data['bank'], data['amount_rub'],
@@ -265,8 +283,12 @@ async def process_profit(message: Message, state: FSMContext):
     )
     await state.clear()
 
-    summary = await render_day_summary(number, date_str)
+    full_text = await render_day_summary(number, date_str)
     markup = build_day_actions(number, year, month, day, 'w')
 
     await message.answer("✅ Круг добавлен!")
-    await message.answer(summary, reply_markup=markup)
+    await answer_with_photo(
+        message, STATISTICS_IMAGE,
+        f"📊 Статистика за {date_formatted} — №{number}"
+    )
+    await message.answer(full_text, reply_markup=markup)
