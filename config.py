@@ -1,4 +1,4 @@
-BOT_TOKEN = "ВАШ_ТОКЕН"
+BOT_TOKEN = "8825098415:AAHxsyrLQ-uops9_xJ6JsVXgq3WfQV1svMQ"
 ADMIN_IDS = [8598019505]
 DB_PATH = "p2p_bot.db"
 PROXY_URL = None
