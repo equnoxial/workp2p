@@ -11,10 +11,11 @@ from aiogram.fsm.context import FSMContext
 import database as db
 from states import AuthStates
 from keyboards import worker_main_menu, worker_menu_text
+from utils import answer_with_photo
+from config import TRUE_IMAGE, FALSE_IMAGE
 
 router = Router()
 
-# Путь к локальному файлу гифки (относительно корня проекта, где лежит main.py)
 GIF_PATH = "assets/welcome.gif"
 
 WELCOME_TEXT = (
@@ -33,14 +34,12 @@ async def cmd_start(message: Message, state: FSMContext):
     worker = await db.get_worker_by_telegram_id(message.from_user.id)
 
     if worker:
-        # Если воркер уже авторизован, сразу показываем ему меню
         await message.answer(
             worker_menu_text(worker['number']),
             reply_markup=worker_main_menu()
         )
         return
 
-    # Если новый пользователь — создаем инлайн-кнопку "Начать работу"
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -49,8 +48,6 @@ async def cmd_start(message: Message, state: FSMContext):
         ]
     )
 
-    # Пытаемся отправить локальную гифку. Если файл не найден или
-    # поврежден - не роняем бота, а просто отправляем текст.
     try:
         animation = FSInputFile(GIF_PATH)
         await message.answer_animation(
@@ -69,9 +66,7 @@ async def cmd_start(message: Message, state: FSMContext):
 @router.callback_query(F.data == "start_work")
 async def process_start_work(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-
     await state.set_state(AuthStates.waiting_key)
-
     await callback.message.answer(
         "🔐 Для доступа введите ваш секретный ключ (например: P2P-AA0000):"
     )
@@ -82,20 +77,25 @@ async def process_key(message: Message, state: FSMContext):
     key = (message.text or "").strip()
 
     if not key:
-        await message.answer("❌ Ключ не может быть пустым. Введите ключ:")
+        await answer_with_photo(
+            message, FALSE_IMAGE,
+            "❌ Ключ не может быть пустым. Введите ключ:"
+        )
         return
 
     worker = await db.get_worker_by_key(key)
 
     if not worker:
-        await message.answer(
+        await answer_with_photo(
+            message, FALSE_IMAGE,
             "❌ Неверный ключ. Проверьте правильность ввода "
             "(учитывайте регистр) и попробуйте снова."
         )
         return
 
     if worker['is_bound'] and worker['telegram_id'] != message.from_user.id:
-        await message.answer(
+        await answer_with_photo(
+            message, FALSE_IMAGE,
             "❌ Этот ключ уже используется другим пользователем. "
             "Обратитесь к администратору."
         )
@@ -103,10 +103,9 @@ async def process_key(message: Message, state: FSMContext):
 
     await db.bind_worker(worker['number'], message.from_user.id)
     await state.clear()
-    await message.answer(
-        f"✅ Доступ подтвержден!\n📱 Ваш рабочий номер: №{worker['number']}",
-        reply_markup=worker_main_menu()
-    )
+
+    success_text = f"✅ Доступ подтвержден!\n📱 Ваш рабочий номер: №{worker['number']}"
+    await answer_with_photo(message, TRUE_IMAGE, success_text, worker_main_menu())
 
 
 @router.callback_query(F.data == "noop")
