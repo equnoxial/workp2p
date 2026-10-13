@@ -17,6 +17,15 @@ router = Router()
 # Путь к локальному файлу гифки (относительно корня проекта, где лежит main.py)
 GIF_PATH = "assets/welcome.gif"
 
+WELCOME_TEXT = (
+    "Добро пожаловать!\n"
+    "Вы попали в бота «помощника», с его помощью вы сможете:\n\n"
+    "🔰Вести статистику сделок.\n\n"
+    "🔰Отслеживать свои результаты. \n\n"
+    "🔰Видеть свой профит за день\n\n"
+    "⚜️Желаем успехов и хорошей работы ⚜️"
+)
+
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
@@ -46,13 +55,13 @@ async def cmd_start(message: Message, state: FSMContext):
         animation = FSInputFile(GIF_PATH)
         await message.answer_animation(
             animation=animation,
-            caption="Добро пожаловать",
+            caption=WELCOME_TEXT,
             reply_markup=keyboard
         )
     except Exception as e:
         logging.warning(f"Не удалось отправить анимацию приветствия: {e}")
         await message.answer(
-            "Добро пожаловать",
+            WELCOME_TEXT,
             reply_markup=keyboard
         )
 
