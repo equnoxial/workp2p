@@ -10,7 +10,7 @@ from keyboards import worker_main_menu, worker_menu_text
 router = Router()
 
 # Прямая ссылка на медиафайл вашей гифки с Giphy
-GIF_URL = "https://giphy.com"
+GIF_URL = "https://giphy.com/gifs/woLhAIaKFErYvYNN0e"
 
 
 @router.message(CommandStart())
