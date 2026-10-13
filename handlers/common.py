@@ -1,6 +1,11 @@
+import logging
+
 from aiogram import Router, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import (
+    Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton,
+    FSInputFile
+)
 from aiogram.fsm.context import FSMContext
 
 import database as db
@@ -9,8 +14,8 @@ from keyboards import worker_main_menu, worker_menu_text
 
 router = Router()
 
-# Прямая ссылка на медиафайл вашей гифки с Giphy
-GIF_URL = "https://giphy.com/gifs/woLhAIaKFErYvYNN0e"
+# Путь к локальному файлу гифки (относительно корня проекта, где лежит main.py)
+GIF_PATH = "assets/welcome.gif"
 
 
 @router.message(CommandStart())
@@ -24,19 +29,30 @@ async def cmd_start(message: Message, state: FSMContext):
             worker_menu_text(worker['number']),
             reply_markup=worker_main_menu()
         )
-    else:
-        # Если новый пользователь — создаем инлайн-кнопку "Начать работу"
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text="Начать работу 🚀", callback_data="start_work")
-                ]
+        return
+
+    # Если новый пользователь — создаем инлайн-кнопку "Начать работу"
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Начать работу 🚀", callback_data="start_work")
             ]
-        )
-        # Отправляем гифку с надписью "Добро пожаловать"
+        ]
+    )
+
+    # Пытаемся отправить локальную гифку. Если файл не найден или
+    # поврежден - не роняем бота, а просто отправляем текст.
+    try:
+        animation = FSInputFile(GIF_PATH)
         await message.answer_animation(
-            animation=GIF_URL,
+            animation=animation,
             caption="Добро пожаловать",
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        logging.warning(f"Не удалось отправить анимацию приветствия: {e}")
+        await message.answer(
+            "Добро пожаловать",
             reply_markup=keyboard
         )
 
@@ -44,11 +60,9 @@ async def cmd_start(message: Message, state: FSMContext):
 @router.callback_query(F.data == "start_work")
 async def process_start_work(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    
-    # Включаем состояние ожидания ввода ключа
+
     await state.set_state(AuthStates.waiting_key)
-    
-    # Отправляем текст с запросом секретного ключа
+
     await callback.message.answer(
         "🔐 Для доступа введите ваш секретный ключ (например: P2P-AA0000):"
     )
