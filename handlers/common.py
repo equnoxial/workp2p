@@ -1,6 +1,6 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 
 import database as db
@@ -9,6 +9,9 @@ from keyboards import worker_main_menu, worker_menu_text
 
 router = Router()
 
+# Прямая ссылка на медиафайл вашей гифки с Giphy
+GIF_URL = "https://giphy.com"
+
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
@@ -16,16 +19,39 @@ async def cmd_start(message: Message, state: FSMContext):
     worker = await db.get_worker_by_telegram_id(message.from_user.id)
 
     if worker:
+        # Если воркер уже авторизован, сразу показываем ему меню
         await message.answer(
             worker_menu_text(worker['number']),
             reply_markup=worker_main_menu()
         )
     else:
-        await state.set_state(AuthStates.waiting_key)
-        await message.answer(
-            "🔐 Добро пожаловать в P2P Tracker Bot!\n\n"
-            "Для доступа введите ваш секретный ключ (например: P2P-XF8392):"
+        # Если новый пользователь — создаем инлайн-кнопку "Начать работу"
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(text="Начать работу 🚀", callback_data="start_work")
+                ]
+            ]
         )
+        # Отправляем гифку с надписью "Добро пожаловать"
+        await message.answer_animation(
+            animation=GIF_URL,
+            caption="Добро пожаловать",
+            reply_markup=keyboard
+        )
+
+
+@router.callback_query(F.data == "start_work")
+async def process_start_work(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    
+    # Включаем состояние ожидания ввода ключа
+    await state.set_state(AuthStates.waiting_key)
+    
+    # Отправляем текст с запросом секретного ключа
+    await callback.message.answer(
+        "🔐 Для доступа введите ваш секретный ключ (например: P2P-AA0000):"
+    )
 
 
 @router.message(AuthStates.waiting_key)
