@@ -2,10 +2,9 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
-from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from config import BOT_TOKEN, PROXY_URL
+from config import BOT_TOKEN
 import database as db
 from handlers import common, worker, admin
 
@@ -14,12 +13,7 @@ async def main():
     logging.basicConfig(level=logging.INFO)
     await db.init_db()
 
-    if PROXY_URL:
-        session = AiohttpSession(proxy=PROXY_URL)
-        bot = Bot(token=BOT_TOKEN, session=session)
-    else:
-        bot = Bot(token=BOT_TOKEN)
-
+    bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
 
     dp.include_router(admin.router)
